@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Direct Browser-to-Browser File Transfer",
   "scripts": {
+    "start": "node server/index.js",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "server": "npm start --prefix server",
     "client": "npm run dev --prefix client",
