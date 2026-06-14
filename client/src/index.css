@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  --color-accent: hsl(var(--accent));
+  --color-accent-hover: hsl(var(--accent-hover));
+  --color-text-main: hsl(var(--text-main));
+  --color-text-muted: hsl(var(--text-muted));
+  --color-card-bg: hsl(var(--card));
+  --color-card-border: hsl(var(--card-border));
+}
+
+:root {
+  /* Creamish Light Mode Theme Tokens */
+  --background: 36 40% 97%;
+  --card: 33 25% 93%;
+  --card-border: 30 20% 86%;
+  --text-main: 20 20% 15%;
+  --text-muted: 20 10% 40%;
+  --accent: 18 70% 45%;
+  --accent-hover: 18 75% 38%;
+  --shadow-color: 20 20% 80%;
+  --glow-opacity: 0.15;
+}
+
+.dark {
+  /* Burgundy/Dark Red Dark Mode Theme Tokens */
+  --background: 355 35% 8%;
+  --card: 355 30% 13%;
+  --card-border: 355 25% 20%;
+  --text-main: 36 40% 97%;
+  --text-muted: 355 15% 65%;
+  --accent: 355 75% 55%;
+  --accent-hover: 355 80% 48%;
+  --shadow-color: 355 50% 3%;
+  --glow-opacity: 0.35;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--text-main));
+  font-family: var(--font-sans);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+}
+
+/* Custom utility styles */
+.theme-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel {
+  background: hsla(var(--card) / 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsla(var(--card-border) / 0.6);
+  box-shadow: 0 12px 40px 0 hsla(var(--shadow-color) / 0.15);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary {
+  background-color: hsl(var(--accent));
+  color: #ffffff;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px hsla(var(--accent) / 0.2);
+  cursor: pointer;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: hsl(var(--accent-hover));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px hsla(var(--accent) / 0.3);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Custom animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px 2px hsla(var(--accent) / var(--glow-opacity));
+  }
+  50% {
+    box-shadow: 0 0 35px 8px hsla(var(--accent) / calc(var(--glow-opacity) + 0.15));
+  }
+}
+
+.glow-effect {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+/* Shimmer animation for files processing */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, 
+    hsla(var(--card-border) / 0.1) 25%, 
+    hsla(var(--card-border) / 0.3) 37%, 
+    hsla(var(--card-border) / 0.1) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
