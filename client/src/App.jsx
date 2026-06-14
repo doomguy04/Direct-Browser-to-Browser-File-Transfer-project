@@ -198,7 +198,7 @@ export default function App() {
       p2pRef.current.close();
     }
 
-    const connection = new P2PConnection(activeSocket, roomId, roleRef.current, {
+    const connection = new P2PConnection(activeSocket, roomId, roleRef.current, peerId, {
       onStateChange: async (state) => {
         setPeerConnectionState(state);
         
@@ -255,7 +255,6 @@ export default function App() {
       }
     });
 
-    connection.setTargetPeerId(peerId);
     p2pRef.current = connection;
 
     // Sender initiates the RTC connection handshake

@@ -11,10 +11,11 @@ const ICE_SERVERS = {
 };
 
 export class P2PConnection {
-  constructor(socket, roomId, role, options = {}) {
+  constructor(socket, roomId, role, targetPeerId, options = {}) {
     this.socket = socket;
     this.roomId = roomId;
     this.role = role;
+    this.targetPeerId = targetPeerId;
     this.peerConnection = null;
     this.dataChannel = null;
     
@@ -74,10 +75,6 @@ export class P2PConnection {
     }
   }
 
-  setTargetPeerId(peerId) {
-    this.targetPeerId = peerId;
-  }
-
   setupDataChannelEvents() {
     this.dataChannel.binaryType = 'arraybuffer';
 
@@ -121,7 +118,7 @@ export class P2PConnection {
         await this.processBufferedCandidates();
       } else if (signalData.type === 'candidate') {
         if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
-          await this.peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+          await this.peerConnection.addIceCandidate(signalData.candidate);
         } else {
           this.iceCandidatesQueue.push(signalData.candidate);
         }
@@ -138,7 +135,7 @@ export class P2PConnection {
     while (this.iceCandidatesQueue.length > 0) {
       const candidate = this.iceCandidatesQueue.shift();
       try {
-        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        await this.peerConnection.addIceCandidate(candidate);
       } catch (err) {
         console.error('Error adding buffered ICE candidate:', err);
       }
