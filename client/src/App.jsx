@@ -40,6 +40,17 @@ export default function App() {
   const p2pRef = useRef(null);
   const isTransferringRef = useRef(false);
 
+  // Refs to avoid stale closures in socket/WebRTC event listeners
+  const roleRef = useRef(role);
+  const fileRef = useRef(file);
+  const encryptionKeyRef = useRef(encryptionKey);
+  const metadataRef = useRef(metadata);
+
+  useEffect(() => { roleRef.current = role; }, [role]);
+  useEffect(() => { fileRef.current = file; }, [file]);
+  useEffect(() => { encryptionKeyRef.current = encryptionKey; }, [encryptionKey]);
+  useEffect(() => { metadataRef.current = metadata; }, [metadata]);
+
   // Hash Router setup
   useEffect(() => {
     const handleHashChange = () => {
@@ -95,8 +106,8 @@ export default function App() {
       // Join Room
       newSocket.emit('join-room', {
         roomId,
-        role,
-        metadata: role === 'sender' ? metadata : null
+        role: roleRef.current,
+        metadata: roleRef.current === 'sender' ? metadataRef.current : null
       });
     });
 
@@ -107,7 +118,7 @@ export default function App() {
 
     // File metadata received (for receiver)
     newSocket.on('file-metadata', (meta) => {
-      if (role === 'receiver') {
+      if (roleRef.current === 'receiver') {
         setMetadata(meta);
       }
     });
@@ -118,7 +129,7 @@ export default function App() {
       setTargetPeerId(receiverId);
       setPeerDisconnected(false);
       
-      if (role === 'sender') {
+      if (roleRef.current === 'sender') {
         initializeP2P(newSocket, receiverId);
       }
     });
@@ -151,10 +162,10 @@ export default function App() {
       console.log('Received control message:', message);
       if (message.type === 'resume-request') {
         // Receiver requesting resume from a specific chunk index
-        if (role === 'sender' && file && encryptionKey) {
+        if (roleRef.current === 'sender' && fileRef.current && encryptionKeyRef.current) {
           setIsPaused(false);
           if (p2pRef.current) {
-            p2pRef.current.sendFile(file, encryptionKey, message.index);
+            p2pRef.current.sendFile(fileRef.current, encryptionKeyRef.current, message.index);
           }
         }
       } else if (message.type === 'pause') {
@@ -164,9 +175,9 @@ export default function App() {
         setIsPaused(false);
         if (p2pRef.current) {
           p2pRef.current.resumeTransfer();
-          if (role === 'sender') {
+          if (roleRef.current === 'sender') {
             // Trigger file transfer loop from where it paused
-            p2pRef.current.sendFile(file, encryptionKey, p2pRef.current.sendOffsetIndex);
+            p2pRef.current.sendFile(fileRef.current, encryptionKeyRef.current, p2pRef.current.sendOffsetIndex);
           }
         }
       }
@@ -179,7 +190,7 @@ export default function App() {
         p2pRef.current = null;
       }
     };
-  }, [roomId, role, metadata]);
+  }, [roomId, role]);
 
   // Initialize WebRTC P2P Connection helper
   const initializeP2P = (activeSocket, peerId) => {
@@ -187,12 +198,12 @@ export default function App() {
       p2pRef.current.close();
     }
 
-    const connection = new P2PConnection(activeSocket, roomId, role, {
+    const connection = new P2PConnection(activeSocket, roomId, roleRef.current, {
       onStateChange: async (state) => {
         setPeerConnectionState(state);
         
         // When Data Channel is open and we are the receiver, ask to start or resume transfer
-        if (state === 'data-channel-open' && role === 'receiver') {
+        if (state === 'data-channel-open' && roleRef.current === 'receiver') {
           setPeerDisconnected(false);
           const currentCount = await getChunksCount(roomId);
           console.log(`Data Channel open. We already have ${currentCount} chunks saved. Requesting transfer...`);
@@ -208,17 +219,17 @@ export default function App() {
         setTransferSpeed(speedBytesPerSec);
       },
       onChunkReceived: async (index, encryptedData) => {
-        if (!encryptionKey) return;
+        if (!encryptionKeyRef.current) return;
         try {
           // 1. Decrypt chunk
-          const decrypted = await decryptChunk(encryptedData, encryptionKey);
+          const decrypted = await decryptChunk(encryptedData, encryptionKeyRef.current);
           
           // 2. Save decrypted chunk to IndexedDB
           await saveChunk(roomId, index, decrypted);
           
           // 3. Update progress locally on receiver
-          if (metadata) {
-            const totalChunks = metadata.totalChunks;
+          if (metadataRef.current) {
+            const totalChunks = metadataRef.current.totalChunks;
             const currentProgress = ((index + 1) / totalChunks) * 100;
             setProgress(currentProgress);
 
@@ -248,7 +259,7 @@ export default function App() {
     p2pRef.current = connection;
 
     // Sender initiates the RTC connection handshake
-    if (role === 'sender') {
+    if (roleRef.current === 'sender') {
       connection.initiateHandshake();
     }
   };
@@ -260,13 +271,13 @@ export default function App() {
     
     try {
       const chunks = await getChunks(roomId);
-      const finalBlob = new Blob(chunks, { type: metadata.type });
+      const finalBlob = new Blob(chunks, { type: metadataRef.current.type });
       
       // Verify SHA-256 hash
       setPreparationStatus('Verifying cryptographic integrity...');
       const localHash = await calculateSHA256(finalBlob);
       
-      if (localHash === metadata.sha256) {
+      if (localHash === metadataRef.current.sha256) {
         console.log('SHA-256 Checksum Verified successfully!');
         setPeerConnectionState('connected'); // Reset to show complete
         setProgress(100);
@@ -275,7 +286,7 @@ export default function App() {
         const url = URL.createObjectURL(finalBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = metadata.name;
+        a.download = metadataRef.current.name;
         document.body.appendChild(a);
         a.click();
         
@@ -288,7 +299,7 @@ export default function App() {
         // Clear IndexedDB store for this room
         await clearRoom(roomId);
       } else {
-        console.error('Hash mismatch! Expected:', metadata.sha256, 'Got:', localHash);
+        console.error('Hash mismatch! Expected:', metadataRef.current.sha256, 'Got:', localHash);
         setErrorMsg('Cryptographic integrity check failed! File may be corrupted.');
         setPeerConnectionState('failed');
       }
