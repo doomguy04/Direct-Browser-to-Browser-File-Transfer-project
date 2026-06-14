@@ -51,8 +51,12 @@ export default function App() {
         
         const extractedRoomId = roomPart.replace('#/room/', '');
         if (extractedRoomId && keyHex) {
+          // If we are already the sender, do not override our role to receiver
+          setRole(prev => {
+            if (prev === 'sender') return 'sender';
+            return 'receiver';
+          });
           setRoomId(extractedRoomId);
-          setRole('receiver');
           
           // Import encryption key
           importKeyFromHex(keyHex)
