@@ -27,6 +27,7 @@ export class P2PConnection {
     this.isPaused = false;
     this.sendOffsetIndex = 0;
     this.chunkSize = 16384; // 16KB chunks
+    this.iceCandidatesQueue = []; // Queue for candidates arriving before remote description is set
 
     this.init();
   }
@@ -105,6 +106,7 @@ export class P2PConnection {
     try {
       if (signalData.type === 'offer') {
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+        await this.processBufferedCandidates();
         const answer = await this.peerConnection.createAnswer();
         await this.peerConnection.setLocalDescription(answer);
         
@@ -114,12 +116,30 @@ export class P2PConnection {
         });
       } else if (signalData.type === 'answer') {
         await this.peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+        await this.processBufferedCandidates();
       } else if (signalData.type === 'candidate') {
-        await this.peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+        if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+        } else {
+          this.iceCandidatesQueue.push(signalData.candidate);
+        }
       }
     } catch (err) {
       console.error('Error handling WebRTC signal:', err);
       this.onError(err);
+    }
+  }
+
+  async processBufferedCandidates() {
+    if (this.iceCandidatesQueue.length === 0) return;
+    console.log(`Processing ${this.iceCandidatesQueue.length} buffered ICE candidates`);
+    while (this.iceCandidatesQueue.length > 0) {
+      const candidate = this.iceCandidatesQueue.shift();
+      try {
+        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.error('Error adding buffered ICE candidate:', err);
+      }
     }
   }
 

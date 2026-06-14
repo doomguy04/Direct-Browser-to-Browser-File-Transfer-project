@@ -83,7 +83,7 @@ export default function App() {
 
     console.log(`Connecting to signaling server at ${SOCKET_URL}...`);
     const newSocket = io(SOCKET_URL, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       autoConnect: true
     });
 
